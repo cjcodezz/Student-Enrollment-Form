@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Student Enrollment Form</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Student Enrollment Form</h2>
+    <form id="studentForm">
+        <div class="form-group">
+            <span><label for="rollNo">Roll Number:</label> <label id="rollNoMsg"></label></span>
+            <input type="text" class="form-control" name="rollNo" id="rollNo" 
+                   placeholder="Enter Roll Number" required>
+        </div>
+        <div class="form-group">
+            <label for="fullName">Full Name:</label>
+            <input type="text" class="form-control" id="fullName" 
+                   placeholder="Enter Full Name" name="fullName" disabled>
+        </div>
+        <div class="form-group">
+            <label for="className">Class:</label>
+            <input type="text" class="form-control" id="className" 
+                   placeholder="Enter Class" name="className" disabled>
+        </div>
+        <div class="form-group">
+            <label for="birthDate">Birth Date:</label>
+            <input type="date" class="form-control" id="birthDate" name="birthDate" disabled>
+        </div>
+        <div class="form-group">
+            <label for="address">Address:</label>
+            <textarea class="form-control" id="address" placeholder="Enter Address" name="address" disabled></textarea>
+        </div>
+        <div class="form-group">
+            <label for="enrollmentDate">Enrollment Date:</label>
+            <input type="date" class="form-control" id="enrollmentDate" name="enrollmentDate" disabled>
+        </div>
+        <input type="button" class="btn btn-primary" id="saveBtn" value="Save" onclick="saveStudent();" disabled>
+        <input type="button" class="btn btn-info" id="updateBtn" value="Update" onclick="updateStudent();" disabled>
+        <input type="button" class="btn btn-default" id="resetBtn" value="Reset" onclick="resetForm();" disabled>
+    </form>
+</div>
+
+<script>
+    // Database configuration
+    const dbName = "SCHOOL-DB";
+    const relationName = "STUDENT-TABLE";
+    const connToken = "90934540|-31949209797473484|90958994";
+    const baseUrl = "https://api.login2explore.com:443";
+    
+    // Define all required JsonPowerDB request functions
+    function createGET_BY_KEYRequest(token, dbName, relationName, primaryKey, value) {
+        return {
+            "token": token,
+            "dbName": dbName,
+            "relationName": relationName,
+            "cmd": "GET",
+            "key": primaryKey,
+            "value": value
+        };
+    }
+    
+    function createPUTRequest(token, jsonStr, dbName, relationName) {
+        return {
+            "token": token,
+            "dbName": dbName,
+            "relationName": relationName,
+            "cmd": "PUT",
+            "jsonStr": jsonStr
+        };
+    }
+    
+    function createUPDATERecordRequest(token, dbName, relationName, jsonStr) {
+        return {
+            "token": token,
+            "dbName": dbName,
+            "relationName": relationName,
+            "cmd": "UPDATE",
+            "jsonStr": jsonStr
+        };
+    }
+    
+    $(document).ready(function() {
+        $("#rollNo").focus();
+        
+        // Check student when roll no is entered
+        $("#rollNo").on('keypress', function(e) {
+            if(e.which === 13) { // Enter key
+                checkStudentExists();
+            }
+        });
+    });
+
+    function disableFormFields() {
+        $("#fullName, #className, #birthDate, #address, #enrollmentDate").prop("disabled", true);
+        $("#saveBtn, #updateBtn, #resetBtn").prop("disabled", true);
+    }
+
+    function enableFormFields() {
+        $("#fullName, #className, #birthDate, #address, #enrollmentDate").prop("disabled", false);
+        $("#saveBtn, #resetBtn").prop("disabled", false);
+        $("#fullName").focus();
+    }
+
+    function enableUpdateFields() {
+        $("#fullName, #className, #birthDate, #address, #enrollmentDate").prop("disabled", false);
+        $("#updateBtn, #resetBtn").prop("disabled", false);
+        $("#rollNo").prop("disabled", true);
+        $("#fullName").focus();
+    }
+
+    function validateAndGetFormData() {
+        const rollNo = $("#rollNo").val().trim();
+        if (rollNo === "") {
+            alert("Roll Number is required");
+            $("#rollNo").focus();
+            return "";
+        }
+
+        const fullName = $("#fullName").val().trim();
+        if (fullName === "") {
+            alert("Full Name is required");
+            $("#fullName").focus();
+            return "";
+        }
+
+        const className = $("#className").val().trim();
+        if (className === "") {
+            alert("Class is required");
+            $("#className").focus();
+            return "";
+        }
+
+        const birthDate = $("#birthDate").val();
+        if (birthDate === "") {
+            alert("Birth Date is required");
+            $("#birthDate").focus();
+            return "";
+        }
+
+        const address = $("#address").val().trim();
+        if (address === "") {
+            alert("Address is required");
+            $("#address").focus();
+            return "";
+        }
+
+        const enrollmentDate = $("#enrollmentDate").val();
+        if (enrollmentDate === "") {
+            alert("Enrollment Date is required");
+            $("#enrollmentDate").focus();
+            return "";
+        }
+
+        return JSON.stringify({
+            "Roll-No": rollNo,
+            "Full-Name": fullName,
+            "Class": className,
+            "Birth-Date": birthDate,
+            "Address": address,
+            "Enrollment-Date": enrollmentDate
+        });
+    }
+
+    function resetForm() {
+        $("#studentForm")[0].reset();
+        $("#rollNo").prop("disabled", false);
+        disableFormFields();
+        $("#rollNo").focus();
+    }
+
+    function checkStudentExists() {
+        const rollNo = $("#rollNo").val().trim();
+        if (rollNo === "") {
+            alert("Please enter Roll Number");
+            return;
+        }
+
+        const getRequest = createGET_BY_KEYRequest(
+            connToken, 
+            dbName, 
+            relationName, 
+            'Roll-No', 
+            rollNo
+        );
+        
+        jQuery.ajaxSetup({async: false});
+        $.ajax({
+            url: baseUrl + "/api/irl",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify(getRequest),
+            contentType: "application/json",
+            success: function(result) {
+                if (result.data === null) {
+                    // Student doesn't exist - enable form for new entry
+                    enableFormFields();
+                } else {
+                    // Student exists - populate form for update
+                    $("#fullName").val(result.data['Full-Name'] || '');
+                    $("#className").val(result.data['Class'] || '');
+                    $("#birthDate").val(result.data['Birth-Date'] || '');
+                    $("#address").val(result.data['Address'] || '');
+                    $("#enrollmentDate").val(result.data['Enrollment-Date'] || '');
+                    enableUpdateFields();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Error checking student:", error);
+                alert("Error checking student. See console for details.");
+            }
+        });
+        jQuery.ajaxSetup({async: true});
+    }
+
+    function saveStudent() {
+        const jsonStr = validateAndGetFormData();
+        if (jsonStr === "") {
+            return;
+        }
+
+        const putRequest = createPUTRequest(
+            connToken, 
+            jsonStr, 
+            dbName, 
+            relationName
+        );
+        
+        jQuery.ajaxSetup({async: false});
+        $.ajax({
+            url: baseUrl + "/api/irl",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify(putRequest),
+            contentType: "application/json",
+            success: function(result) {
+                if (result.status === 200 || result.status === 201) {
+                    alert("Student data saved successfully!");
+                    resetForm();
+                } else {
+                    alert("Error saving student: " + (result.message || "Unknown error"));
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Save error:", error);
+                alert("Error saving student. See console for details.");
+            }
+        });
+        jQuery.ajaxSetup({async: true});
+    }
+
+    function updateStudent() {
+        const jsonStr = validateAndGetFormData();
+        if (jsonStr === "") {
+            return;
+        }
+
+        const updateRequest = createUPDATERecordRequest(
+            connToken, 
+            dbName, 
+            relationName, 
+            jsonStr
+        );
+        
+        jQuery.ajaxSetup({async: false});
+        $.ajax({
+            url: baseUrl + "/api/irl",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify(updateRequest),
+            contentType: "application/json",
+            success: function(result) {
+                if (result.status === 200) {
+                    alert("Student data updated successfully!");
+                    resetForm();
+                } else {
+                    alert("Error updating student: " + (result.message || "Unknown error"));
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Update error:", error);
+                alert("Error updating student. See console for details.");
+            }
+        });
+        jQuery.ajaxSetup({async: true});
+    }
+</script>
+</body>
+</html>
